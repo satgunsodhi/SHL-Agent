@@ -6,6 +6,7 @@ Endpoints:
   POST /chat    → Conversational assessment recommendations
 """
 
+import os
 import time
 from contextlib import asynccontextmanager
 
@@ -24,10 +25,14 @@ async def lifespan(app: FastAPI):
     print("🚀 Starting SHL Assessment Recommender...")
     start = time.time()
     try:
-        agent = get_agent()
-        elapsed = time.time() - start
-        print(f"✅ Agent ready in {elapsed:.1f}s "
-              f"({len(agent.retriever.catalog)} catalog items)")
+        warm_start = os.getenv("WARM_START", "0") == "1"
+        if warm_start:
+            agent = get_agent()
+            elapsed = time.time() - start
+            print(f"✅ Agent ready in {elapsed:.1f}s "
+                  f"({len(agent.retriever.catalog)} catalog items)")
+        else:
+            print("⏭️ Warm start disabled; agent loads on first request.")
     except Exception as e:
         print(f"⚠️ Startup warning: {e}")
         print("   The agent will initialize on first request.")

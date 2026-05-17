@@ -109,7 +109,7 @@ def evaluate():
     probe_no_hallucination_passed = 0
     probe_no_hallucination_total = 0
     
-    for trace in traces[:3]:
+    for trace in traces:
         print(f"▶️ Evaluating trace: {trace.name}")
         history = []
         

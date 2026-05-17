@@ -14,6 +14,7 @@ This hybrid approach ensures that:
   - The LLM has a complete catalog reference to draw from
 """
 
+import os
 import re
 import numpy as np
 from typing import List, Optional, Dict, Any, Set, Tuple
@@ -47,12 +48,15 @@ class CatalogRetriever:
       - Full catalog compact reference for LLM browsing
     """
 
-    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5"):
-        print("🔧 Loading embedding model...")
-        self.model = SentenceTransformer(model_name)
-
-        print("🔧 Loading cross-encoder model...")
-        self.cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5", lazy_models: bool = True):
+        self.model_name = model_name
+        self._lazy_models = lazy_models
+        self._models_ready = False
+        self.model = None
+        self.cross_encoder = None
+        self.embeddings = None
+        self.index = None
+        self.bm25 = None
 
         print("📂 Loading catalog...")
         self.catalog: List[CatalogItem] = load_catalog()
@@ -71,7 +75,22 @@ class CatalogRetriever:
             if item:
                 self.core_items.append(item)
 
-        # Encode catalog for semantic search
+        # Pre-build the compact full catalog reference
+        self._compact_catalog = self._build_compact_catalog()
+
+        if not self._lazy_models:
+            self._ensure_models()
+
+    def _ensure_models(self) -> None:
+        if self._models_ready:
+            return
+
+        print("🔧 Loading embedding model...")
+        self.model = SentenceTransformer(self.model_name)
+
+        print("🔧 Loading cross-encoder model...")
+        self.cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
         print("🧮 Computing embeddings...")
         search_texts = [item.search_text for item in self.catalog]
         self.embeddings = self.model.encode(
@@ -90,8 +109,7 @@ class CatalogRetriever:
         tokenized_corpus = [self._tokenize(item.search_text) for item in self.catalog]
         self.bm25 = BM25Okapi(tokenized_corpus)
 
-        # Pre-build the compact full catalog reference
-        self._compact_catalog = self._build_compact_catalog()
+        self._models_ready = True
 
         print(f"✅ Retriever ready: {len(self.catalog)} items indexed "
               f"(dim={dim}, {len(self.core_items)} core items)")
@@ -100,6 +118,7 @@ class CatalogRetriever:
 
     def _semantic_search(self, query: str, top_k: int) -> List[Tuple[CatalogItem, float]]:
         """Return top-K items by cosine similarity with scores."""
+        self._ensure_models()
         query_vec = self.model.encode(
             [query], normalize_embeddings=True
         ).astype(np.float32)
@@ -120,6 +139,7 @@ class CatalogRetriever:
 
     def _bm25_search(self, query: str, top_k: int) -> List[CatalogItem]:
         """Lexical search using BM25."""
+        self._ensure_models()
         tokenized_query = self._tokenize(query)
         scores = self.bm25.get_scores(tokenized_query)
         top_n = np.argsort(scores)[::-1][:top_k]
@@ -139,6 +159,7 @@ class CatalogRetriever:
           3. Prepend core/foundational assessments
         Deduplicated and returned as a single list.
         """
+        self._ensure_models()
         seen_ids: Set[str] = set()
         candidates: List[CatalogItem] = []
 
@@ -298,7 +319,8 @@ _retriever_instance: Optional[CatalogRetriever] = None
 def get_retriever() -> CatalogRetriever:
     global _retriever_instance
     if _retriever_instance is None:
-        _retriever_instance = CatalogRetriever()
+        eager = os.getenv("EAGER_RETRIEVER", "0") == "1"
+        _retriever_instance = CatalogRetriever(lazy_models=not eager)
     return _retriever_instance
 
 

@@ -33,6 +33,8 @@ You deeply understand SHL's product portfolio. Key product knowledge:
 - **Graduate Scenarios**: Situational judgement test specifically for graduate-level candidates.
 - **Executive Scenarios / Management Scenarios / Managerial Scenarios**: Situational judgement for senior leaders / managers at various levels.
 - **Knowledge & Skills tests**: Technology-specific (Java, Spring, SQL, AWS, Docker, etc.) and domain-specific (Financial Accounting, Basic Statistics, Medical Terminology, HIPAA Security, etc.).
+  - **CRITICAL:** If the user asks for a programming language or framework NOT explicitly listed in the catalog (e.g. Rust, Go, Swift, React, etc.), ALWAYS recommend "Smart Interview Live Coding" so they can test the skill interactively.
+  - **CRITICAL:** For high-performance backend, systems programming, or infrastructure roles, ALWAYS consider "Linux Programming (General)" and "Networking and Implementation (New)".
 - **DSI (Dependability and Safety Instrument)**: Personality measure for safety-critical/high-trust roles (healthcare, chemical plants, etc.). Use alongside OPQ32r.
 - **SVAR**: Spoken language assessment. Variants: "SVAR Spoken English (US) (New)", "SVAR Spoken English (UK) (New)", etc. Use for call center / phone-based roles.
 
@@ -45,10 +47,11 @@ You deeply understand SHL's product portfolio. Key product knowledge:
 - When user wants QUICK knowledge check only → use "MS Excel (New)" / "MS Word (New)"
 
 **Contact Center tests:**
-- "Contact Center Call Simulation (New)" = standalone newer simulation (15 min)
-- "Customer Service Phone Simulation" = older simulation (20 min, broader language support)
-- "Customer Service Phone Solution" = bundled solution (personality + behavior + simulation)
+- "Contact Center Call Simulation (New)" = standalone newer simulation (15 min). Use for high-volume screening.
+- "Customer Service Phone Simulation" = older simulation (20 min, broader language support). Use for finalist-stage depth.
+- "Customer Service Phone Solution" = bundled solution (personality + behavior + simulation). Do NOT confuse this with the simulations.
 - "Entry Level Customer Serv - Retail & Contact Center" = personality + competency for entry-level CS
+- **CRITICAL:** For a complete entry-level contact center battery, recommend SVAR, Contact Center Call Simulation (New), and Entry Level Customer Serv. Add Customer Service Phone Simulation if they want an older solution.
 
 **Sales reports (all generated from OPQ32r data):**
 - "Sales Transformation 2.0 - Individual Contributor" (v2.0 — use this by default)
@@ -159,15 +162,13 @@ class SHLAgent:
         if not user_messages:
             return ""
 
-        if len(user_messages) == 1:
-            return user_messages[0]
-
-        # Use an LLM to rewrite the query
+        # Use an LLM to rewrite the query even on turn 1
         conversation = "\n".join(f"{m.role}: {m.content}" for m in messages[-4:])
         prompt = (
-            "Given the following conversation, extract the exact constraints and keywords "
-            "for the assessments the user is looking for into a short search query string. "
-            "Focus on the user's latest requests. Only return the search query, nothing else.\n\n"
+            "Given the following conversation, extract the constraints into a short search query string. "
+            "IMPORTANT: Expand specific technologies (e.g. 'Rust', 'React') into broader categories (e.g. 'programming', 'coding', 'software development', 'frontend') to find relevant technical tests. "
+            "If the assistant suggested specific assessment names or skills and the user agreed, BE SURE to include those exact names/skills in the search query. "
+            "Retain all relevant constraints from the entire conversation. Only return the search query, nothing else.\n\n"
             f"Conversation:\n{conversation}\n\nSearch Query:"
         )
 
