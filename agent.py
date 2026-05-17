@@ -179,6 +179,7 @@ class SHLAgent:
                 max_tokens=60,
             )
             query = response.choices[0].message.content.strip() # type:ignore
+            print(f">>> Generated search query: {query}")
             return query if query else user_messages[-1]
         except Exception as e:
             print(f"Query formulation error: {e}")
